@@ -90,15 +90,12 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user || role === null) return;
 
-    if (role === "super_admin") {
-      setLeads([]);
-      return;
-    }
-
     const baseQuery = collection(db, "leads");
     let q;
     
-    if ((role === "client" || role === "admin") && clientId) {
+    if (role === "super_admin") {
+      q = baseQuery;
+    } else if ((role === "client" || role === "admin") && clientId) {
       q = query(baseQuery, where("clientId", "==", clientId));
     } else if (role === "agent" && clientId) {
       const matchAssignees = [user.uid];
