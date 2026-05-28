@@ -1,0 +1,85 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user with role information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "agent", "client"] },
+        "clientId": { "type": "string" }
+      },
+      "required": ["name", "email", "role"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Client account created by the admin",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "clientEmail": { "type": "string", "format": "email" },
+        "ownerId": { "type": "string", "description": "Admin UID" }
+      },
+      "required": ["name", "clientEmail", "ownerId"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "Potential customer lead",
+      "type": "object",
+      "properties": {
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "propertyType": { "type": "string" },
+        "budget": { "type": "string" },
+        "location": { "type": "string" },
+        "source": { "type": "string" },
+        "followUpDate": { "type": "string", "description": "YYYY-MM-DD" },
+        "followUpTime": { "type": "string", "description": "HH:mm" },
+        "assignedTo": { "type": "string", "description": "User ID" },
+        "clientId": { "type": "string", "description": "Client ID for multi-client CRM isolation" },
+        "status": { "type": "string", "enum": ["new", "contacted", "visit_scheduled", "closed", "dropped"] },
+        "notes": { "type": "string" },
+        "createdBy": { "type": "string", "description": "User ID" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["firstName", "phone", "followUpDate", "assignedTo", "status"]
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "Individual task or event related to a lead",
+      "type": "object",
+      "properties": {
+        "leadId": { "type": "string" },
+        "type": { "type": "string", "enum": ["meeting", "visit", "followup", "call"] },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "done"] },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["leadId", "type", "date", "status", "createdBy"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Application users and their roles"
+    },
+    "leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Customer leads"
+    },
+    "clients/{clientId}": {
+      "schema": "Client",
+      "description": "Client configurations and company definitions"
+    },
+    "activities/{activityId}": {
+      "schema": "Activity",
+      "description": "Activities related to leads"
+    }
+  }
+}

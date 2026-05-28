@@ -1,0 +1,118 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(roleName) {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == roleName;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == "mail.nasiya@gmail.com" ||
+        request.auth.token.email == "leadpilot25@gmail.com" ||
+        hasRole("admin")
+      );
+    }
+
+    function isClientUser() {
+      return hasRole("client");
+    }
+
+    function getClientClientId() {
+      return getUserData().clientId;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isMultiPlan(cId) {
+      return exists(/databases/$(database)/documents/clients/$(cId)) &&
+             get(/databases/$(database)/documents/clients/$(cId)).data.plan == 'multi';
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email', 'role']);
+    }
+
+    function isValidLead(data) {
+      return data.keys().hasAll(['firstName', 'phone', 'followUpDate', 'assignedTo', 'status']);
+    }
+
+    function isValidClient(data) {
+      return data.keys().hasAll(['name', 'clientEmail']);
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (
+                    isAdmin() ||
+                    request.auth.uid == userId ||
+                    (resource != null && (
+                      (request.auth.token.email != null && resource.data.email == request.auth.token.email.toLowerCase()) ||
+                      resource.data.clientId == getUserData().clientId
+                    ))
+                  );
+      allow create: if (isOwner(userId) || isAdmin() || (isClientUser() && isMultiPlan(getClientClientId()) && request.resource.data.clientId == getClientClientId())) && isValidUser(request.resource.data);
+      allow update: if (isOwner(userId) || isAdmin() || (isClientUser() && isMultiPlan(getClientClientId()) && resource.data.clientId == getClientClientId() && request.resource.data.clientId == getClientClientId())) && isValidUser(request.resource.data);
+      allow delete: if isAdmin() || (isClientUser() && resource.data.clientId == getClientClientId());
+    }
+
+    match /leads/{leadId} {
+      allow create: if (!isSignedIn()) || 
+                    (isSignedIn() && hasRole("client") && request.resource.data.clientId == getUserData().clientId) ||
+                    (isSignedIn() && hasRole("agent") && request.resource.data.clientId == getUserData().clientId) ||
+                    isAdmin();
+      allow read: if isSignedIn() && (
+                    isAdmin() ||
+                    (hasRole("client") && resource.data.clientId == getUserData().clientId) ||
+                    (hasRole("agent") && resource.data.clientId == getUserData().clientId && (
+                      resource.data.assignedTo == request.auth.uid ||
+                      (request.auth.token.email != null && (resource.data.assignedTo == request.auth.token.email.toLowerCase() || resource.data.assignedTo == request.auth.token.email))
+                    ))
+                  );
+      allow update: if isSignedIn() && (
+                    isAdmin() ||
+                    (hasRole("client") && resource.data.clientId == getUserData().clientId && request.resource.data.clientId == getUserData().clientId) ||
+                    (hasRole("agent") && resource.data.clientId == getUserData().clientId && request.resource.data.clientId == getUserData().clientId && (
+                      resource.data.assignedTo == request.auth.uid ||
+                      (request.auth.token.email != null && (resource.data.assignedTo == request.auth.token.email.toLowerCase() || resource.data.assignedTo == request.auth.token.email))
+                    ))
+                  );
+      allow delete: if isSignedIn() && (
+                    isAdmin() ||
+                    (hasRole("client") && resource.data.clientId == getUserData().clientId)
+                  );
+    }
+
+    match /activities/{activityId} {
+      allow read, write: if isSignedIn() && (
+                    isAdmin() ||
+                    (hasRole("client") && resource.data.clientId == getUserData().clientId) ||
+                    (hasRole("agent") && resource.data.clientId == getUserData().clientId)
+                  );
+    }
+
+    match /clients/{clientId} {
+      allow read: if isAdmin() || 
+                  (isClientUser() && clientId == getClientClientId()) ||
+                  (isSignedIn() && (
+                    request.auth.token.email.toLowerCase() == resource.data.clientEmail ||
+                    (resource.data.ownerEmail != null && request.auth.token.email.toLowerCase() == resource.data.ownerEmail)
+                  ));
+      allow write: if isAdmin();
+    }
+  }
+}

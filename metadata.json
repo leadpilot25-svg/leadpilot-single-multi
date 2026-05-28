@@ -1,0 +1,6 @@
+{
+  "name": "LeadPilot",
+  "description": "Premium mobile-first Lead Engine for real estate agents to manage leads, follow-ups, and site visits.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
