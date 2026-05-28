@@ -29,20 +29,23 @@ export default function PublicLeadForm() {
       let assignedTo = "";
       let userId = "";
       let agentName = "Unassigned Agent";
+      let fallbackClientId = "";
 
-      if (APP_MODE === "single") {
-        try {
-          const userSnap = await getDocs(query(collection(db, "users"), limit(1)));
-          if (!userSnap.empty) {
-            const soleUser = userSnap.docs[0];
+      try {
+        const userSnap = await getDocs(query(collection(db, "users"), limit(1)));
+        if (!userSnap.empty) {
+          const soleUser = userSnap.docs[0];
+          const userData = soleUser.data();
+          fallbackClientId = userData?.clientId || "";
+          
+          if (APP_MODE === "single") {
             assignedTo = soleUser.id;
             userId = soleUser.id;
-            const userData = soleUser.data();
             agentName = userData?.name || userData?.displayName || "Solo Agent";
           }
-        } catch (e) {
-          console.error("Error auto-assigning public lead to sole user:", e);
         }
+      } catch (e) {
+        console.error("Error auto-fetching active users for public lead assignment:", e);
       }
 
       const queryParams = new URLSearchParams(window.location.search);
@@ -60,7 +63,7 @@ export default function PublicLeadForm() {
         followUpTime: "10:00",
         assignedTo, // Auto-assign to sole user in single mode
         userId,     // Set lead owner ID for single mode
-        clientId: urlClientId, // Router tag for SaaS tenancy
+        clientId: urlClientId || fallbackClientId, // Router tag for SaaS tenancy with robust workspace fallback
         status: "new", // "New Inquiry"
         notes: "Lead captured automatically via customer-facing Public Form",
         createdAt: new Date(),
@@ -85,7 +88,7 @@ export default function PublicLeadForm() {
           followUpDate: todayString,
           assignedToName: agentName,
           assignedTo,
-          clientId: urlClientId,
+          clientId: urlClientId || fallbackClientId,
           status: "New Inquiry",
           notes: "Lead captured automatically via customer-facing Public Form",
           createdAt: todayString
